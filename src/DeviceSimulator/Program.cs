@@ -1,27 +1,59 @@
-﻿using System.Net.Http.Json;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http.Json;
+
+// Build configuration
+var config = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
+
+var baseUrl = config["ApiSettings:BaseUrl"];
+var apiKey = config["ApiSettings:ApiKey"];
+var deviceId = config["Simulation:DeviceId"];
+var patientId = config["Simulation:PatientId"];
+var intervalSeconds = config.GetValue<int>("Simulation:IntervalSeconds", 2);
+var hrMin = config.GetValue<int>("Simulation:HeartRateRange:Min", 60);
+var hrMax = config.GetValue<int>("Simulation:HeartRateRange:Max", 100);
+
 
 var http = new HttpClient();
-
-http.DefaultRequestHeaders.Add("x-api-key", "local-dev");
+http.DefaultRequestHeaders.Add("x-api-key", apiKey);
 
 var random = new Random();
-var deviceId = "sim-01";
-var patientId = "p-123";
+
+Console.WriteLine($"Starting simulator for device {deviceId}...");
+Console.WriteLine($"Targeting API: {baseUrl}");
 
 while (true)
 {
-    var hr = new
+    try
     {
-        MeasurementId = Guid.NewGuid(),
-        Timestamp = DateTimeOffset.UtcNow,
-        DeviceId = deviceId,
-        PatientId = patientId,
-        Type = "HeartRate",
-        Value = random.Next(58, 98),
-        Unit = "bpm"
-    };
+        var hr = new
+        {
+            MeasurementId = Guid.NewGuid(),
+            Timestamp = DateTimeOffset.UtcNow,
+            DeviceId = deviceId,
+            PatientId = patientId,
+            Type = "HeartRate",
+            Value = random.Next(hrMin, hrMax),
+            Unit = "bpm"
+        };
 
-    await http.PostAsJsonAsync("https://localhost:7296/api/v1/measurements", hr);
+        var response = await http.PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/api/v1/measurements", hr);
+        
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Data sent: {hr.Value} {hr.Unit}");
+        }
+        else
+        {
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Error: {response.StatusCode}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] API is not available: {ex.Message}");
+    }
 
-    await Task.Delay(TimeSpan.FromSeconds(2));
+    await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
 }
