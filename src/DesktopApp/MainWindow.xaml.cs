@@ -1,17 +1,19 @@
-﻿using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
+using Microsoft.Extensions.Configuration;
 using System.IO;
-using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace DesktopApp;
 
 public partial class MainWindow : Window
 {
     private readonly System.Timers.Timer _timer;
-    private readonly WebClient _client = new WebClient(); // sync, no DI
+    private readonly HttpClient _httpClient = new();
     private readonly IConfiguration _config;
+    private readonly string _baseUrl;
+    private readonly string _measurementsEndpoint;
+    private readonly string _healthEndpoint;
 
     public MainWindow()
     {
@@ -23,38 +25,56 @@ public partial class MainWindow : Window
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
-        var baseUrl = _config["ApiSettings:BaseUrl"]?.TrimEnd('/');
+        _baseUrl = _config["ApiSettings:BaseUrl"]?.TrimEnd('/');
+        _measurementsEndpoint = _config["ApiSettings:Endpoints:Measurements"];
+        _healthEndpoint = _config["ApiSettings:Endpoints:Health"] ;
         var interval = _config.GetValue<int>("ApiSettings:RefreshIntervalMs", 1000);
-        var measurementsEndpoint = _config["ApiSettings:Endpoints:Measurements"];
 
         _timer = new System.Timers.Timer(interval);
-        _timer.Elapsed += (s, e) =>
-        {
-            try
-            {
-                var url = $"{baseUrl}/{measurementsEndpoint}?type=HeartRate";
-                var json = _client.DownloadString(url);
-
-                Dispatcher.Invoke(() =>
-                {
-                    dataGrid.ItemsSource = JsonConvert.DeserializeObject<List<dynamic>>(json);
-                });
-            }
-            catch { /* swallow */ }
-        };
-
+        _timer.Elapsed += async (s, e) => await RefreshDataAsync();
         _timer.Start();
     }
 
-    private void Button_Click(object sender, RoutedEventArgs e)
+    private async Task RefreshDataAsync()
+    {
+        try
+        {
+            var url = $"{_baseUrl}/{_measurementsEndpoint}?type=HeartRate";
+            
+            var measurements = await _httpClient.GetFromJsonAsync<List<Measurement>>(url);
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                dataGrid.ItemsSource = measurements;
+            });
+        }
+        catch { /* swallow */ }
+    }
+
+    private async void Button_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show("Refreshing...");
 
-        var baseUrl = _config["ApiSettings:BaseUrl"]?.TrimEnd('/');
-        var healthEndpoint = _config["ApiSettings:Endpoints:Health"];
-            
-        var json = _client.DownloadString($"{baseUrl}/{healthEndpoint}");
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/{_healthEndpoint}");
 
-        MessageBox.Show("OK: " + json);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                MessageBox.Show("OK: " + json);
+            }
+            else
+            {
+                MessageBox.Show("Error: " + response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Request failed: " + ex.Message);
+        }
     }
 }
+
+public record Measurement(Guid MeasurementId, DateTimeOffset Timestamp, string DeviceId, string PatientId, string Type, object Value, string Unit);
