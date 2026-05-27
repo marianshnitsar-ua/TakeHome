@@ -1,4 +1,5 @@
 using Domain;
+using Domain.Interfaces;
 
 namespace IngestionApi;
 
@@ -13,6 +14,7 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddSingleton<IMeasurementStore, InMemoryStore>();
+        builder.Services.AddSingleton<IMeasurementValidator, MeasurementValidator>();
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();
@@ -22,12 +24,12 @@ public class Program
 
         app.MapGet("/healthz", () => Results.Ok(new { status = "healthy" }));
 
-        app.MapPost("/api/v1/measurements", async (Measurement m, IMeasurementStore store, HttpContext ctx, IConfiguration config) =>
+        app.MapPost("/api/v1/measurements", async (Measurement m, IMeasurementStore store, IMeasurementValidator validator, HttpContext ctx, IConfiguration config) =>
         {
             if (!ValidateApiKey(ctx, config))
                 return Results.Unauthorized();
 
-            if (!MeasurementValidator.IsValid(m))
+            if (!validator.IsValid(m))
                 return Results.BadRequest("invalid measurement");
 
             await store.AddAsync(m);

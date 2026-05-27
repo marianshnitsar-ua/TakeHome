@@ -1,8 +1,10 @@
+using Domain.Interfaces;
+
 namespace Domain;
 
-public static class MeasurementValidator
+public class MeasurementValidator : IMeasurementValidator
 {
-    public static bool IsValid(Measurement m) => 
+    public bool IsValid(Measurement m) => 
         m.MeasurementId != Guid.Empty && 
         m.Timestamp != default && 
         !string.IsNullOrWhiteSpace(m.DeviceId) && 
