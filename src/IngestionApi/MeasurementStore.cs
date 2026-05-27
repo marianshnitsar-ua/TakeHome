@@ -1,13 +1,7 @@
-﻿using Domain;
+using Domain;
+using Domain.Interfaces;
 
 namespace IngestionApi;
-
-public interface IMeasurementStore
-{
-    Task AddAsync(Measurement m);
-
-    Task<IEnumerable<Measurement>> QueryAsync(string? type, DateTimeOffset since);
-}
 
 public class InMemoryStore : IMeasurementStore
 {
