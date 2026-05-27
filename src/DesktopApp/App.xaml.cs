@@ -1,3 +1,5 @@
+using DesktopApp.ViewModels;
+using DesktopApp.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Windows;
@@ -15,6 +17,9 @@ public partial class App : Application
             {
                 // Register HttpClient
                 services.AddHttpClient();
+
+                // Register ViewModels
+                services.AddSingleton<MainViewModel>();
 
                 // Register MainWindow (it will now be created by DI)
                 services.AddSingleton<MainWindow>();

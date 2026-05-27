@@ -1,5 +1,5 @@
 ﻿<Window
-    x:Class="DesktopApp.MainWindow"
+    x:Class="DesktopApp.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Vitals Monitor"
@@ -18,15 +18,17 @@
                 Height="30"
                 Margin="0,0,10,0"
                 Content="Refresh"
-                Click="Button_Click" />
+                Command="{Binding CheckHealthCommand}" />
             <TextBlock
                 Name="txtStatus"
+                Text="{Binding Status}"
                 VerticalAlignment="Center"
                 FontWeight="Bold" />
         </StackPanel>
         <!-- Data grid for measurements -->
         <DataGrid
             Name="dataGrid"
+            ItemsSource="{Binding Measurements}"
             AutoGenerateColumns="True"
             IsReadOnly="True"
             DockPanel.Dock="Bottom"
