@@ -1,3 +1,4 @@
+using Domain;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Net.Http;
@@ -76,5 +77,3 @@ public partial class MainWindow : Window
         }
     }
 }
-
-public record Measurement(Guid MeasurementId, DateTimeOffset Timestamp, string DeviceId, string PatientId, string Type, object Value, string Unit);

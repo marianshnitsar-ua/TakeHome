@@ -1,4 +1,6 @@
-﻿namespace IngestionApi;
+﻿using Domain;
+
+namespace IngestionApi;
 
 public interface IMeasurementStore
 {

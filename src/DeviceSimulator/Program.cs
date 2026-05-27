@@ -1,3 +1,4 @@
+using Domain;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
 
@@ -28,16 +29,15 @@ while (true)
 {
     try
     {
-        var hr = new
-        {
-            MeasurementId = Guid.NewGuid(),
-            Timestamp = DateTimeOffset.UtcNow,
-            DeviceId = deviceId,
-            PatientId = patientId,
-            Type = "HeartRate",
-            Value = random.Next(hrMin, hrMax),
-            Unit = "bpm"
-        };
+        var hr = new Measurement(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            deviceId!,
+            patientId!,
+            "HeartRate",
+            random.Next(hrMin, hrMax),
+            "bpm"
+        );
 
         var response = await http.PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/api/v1/measurements", hr);
         
