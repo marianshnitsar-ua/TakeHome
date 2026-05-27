@@ -1,6 +1,5 @@
 using Domain;
 using Microsoft.Extensions.Configuration;
-using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Windows;
@@ -10,25 +9,23 @@ namespace DesktopApp;
 public partial class MainWindow : Window
 {
     private readonly System.Timers.Timer _timer;
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient;
     private readonly IConfiguration _config;
     private readonly string _baseUrl;
     private readonly string _measurementsEndpoint;
     private readonly string _healthEndpoint;
 
-    public MainWindow()
+    // dependencies are now injected via constructor
+    public MainWindow(IConfiguration config, IHttpClientFactory httpClientFactory)
     {
         InitializeComponent();
 
-        // Load configuration
-        _config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .Build();
+        _config = config;
+        _httpClient = httpClientFactory.CreateClient();
 
         _baseUrl = _config["ApiSettings:BaseUrl"]?.TrimEnd('/');
         _measurementsEndpoint = _config["ApiSettings:Endpoints:Measurements"];
-        _healthEndpoint = _config["ApiSettings:Endpoints:Health"] ;
+        _healthEndpoint = _config["ApiSettings:Endpoints:Health"];
         var interval = _config.GetValue<int>("ApiSettings:RefreshIntervalMs", 1000);
 
         _timer = new System.Timers.Timer(interval);
@@ -41,7 +38,6 @@ public partial class MainWindow : Window
         try
         {
             var url = $"{_baseUrl}/{_measurementsEndpoint}?type=HeartRate";
-            
             var measurements = await _httpClient.GetFromJsonAsync<List<Measurement>>(url);
 
             await Dispatcher.InvokeAsync(() =>
@@ -58,13 +54,13 @@ public partial class MainWindow : Window
 
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/{_healthEndpoint}");
-
+            var url = $"{_baseUrl}/{_healthEndpoint}";
+            var response = await _httpClient.GetAsync(url);
             
             if (response.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadAsStringAsync();
-                MessageBox.Show("OK: " + json);
+                var content = await response.Content.ReadAsStringAsync();
+                MessageBox.Show("OK: " + content);
             }
             else
             {
