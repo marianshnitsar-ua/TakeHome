@@ -1,12 +1,19 @@
 using Domain;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using System.Net.Http.Json;
 
-// Build configuration
-var config = new ConfigurationBuilder()
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+// Set up the Host to manage DI and Configuration
+using IHost host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
+    {
+        services.AddHttpClient();
+    })
     .Build();
+
+var config = host.Services.GetRequiredService<IConfiguration>();
+var httpClientFactory = host.Services.GetRequiredService<IHttpClientFactory>();
 
 var baseUrl = config["ApiSettings:BaseUrl"];
 var apiKey = config["ApiSettings:ApiKey"];
@@ -16,8 +23,7 @@ var intervalSeconds = config.GetValue<int>("Simulation:IntervalSeconds", 2);
 var hrMin = config.GetValue<int>("Simulation:HeartRateRange:Min", 60);
 var hrMax = config.GetValue<int>("Simulation:HeartRateRange:Max", 100);
 
-
-var http = new HttpClient();
+var http = httpClientFactory.CreateClient();
 http.DefaultRequestHeaders.Add("x-api-key", apiKey);
 
 var random = new Random();
